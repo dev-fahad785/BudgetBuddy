@@ -264,14 +264,17 @@ class StorageService {
   }
 
   // Create budget with automatic rollover calculation
-  async createBudgetWithRollover(budgetData: { monthlyIncome: string; month: string }): Promise<Budget> {
+  async createBudgetWithRollover(budgetData: { monthlyIncome: string; month: string; includeRollover?: boolean }): Promise<Budget> {
     const db = await initDB();
     const { rollover } = await this.calculatePreviousMonthRemaining(budgetData.month);
+    
+    // Only include rollover if user chose to include it (default to true for backward compatibility)
+    const shouldIncludeRollover = budgetData.includeRollover !== false;
     
     const newBudget: Budget = {
       id: crypto.randomUUID(),
       monthlyIncome: budgetData.monthlyIncome,
-      previousMonthRollover: rollover > 0 ? String(rollover) : undefined,
+      previousMonthRollover: (rollover > 0 && shouldIncludeRollover) ? String(rollover) : undefined,
       month: budgetData.month,
       createdAt: new Date(),
     };
@@ -295,6 +298,17 @@ class StorageService {
 
   async createCategory(categoryData: { name: string; icon: string; color: string; isDefault?: boolean }): Promise<Category> {
     const db = await initDB();
+    
+    // Check for duplicate category name (case-insensitive)
+    const existingCategories = await db.getAll('categories');
+    const duplicate = existingCategories.find(
+      cat => cat.name.toLowerCase() === categoryData.name.toLowerCase()
+    );
+    
+    if (duplicate) {
+      throw new Error(`A category named "${duplicate.name}" already exists.`);
+    }
+    
     const newCategory: Category = {
       id: crypto.randomUUID(),
       name: categoryData.name,
@@ -309,6 +323,23 @@ class StorageService {
 
   async deleteCategory(id: string): Promise<void> {
     const db = await initDB();
+    
+    // Check if category has allocations
+    const allocations = await db.getAll('allocations');
+    const categoryAllocations = allocations.filter(a => a.categoryId === id);
+    
+    // Check if category has expenses
+    const expenses = await db.getAll('expenses');
+    const categoryExpenses = expenses.filter(e => e.categoryId === id);
+    
+    if (categoryAllocations.length > 0 || categoryExpenses.length > 0) {
+      const category = await db.get('categories', id);
+      const categoryName = category?.name || 'This category';
+      throw new Error(
+        `${categoryName} cannot be deleted because it has ${categoryAllocations.length} budget allocation(s) and ${categoryExpenses.length} transaction(s). Please remove all allocations and transactions first.`
+      );
+    }
+    
     await db.delete('categories', id);
   }
 

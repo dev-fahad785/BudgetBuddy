@@ -108,9 +108,13 @@ export default function ManageBudgetModal({ open, onOpenChange, budgetId }: Mana
     setIsCreating(true);
     try {
       await createCategoryMutation.mutateAsync({ name: newCategoryName, icon: newCategoryIcon, color: newCategoryColor });
-    } catch (err) {
+    } catch (err: any) {
       setIsCreating(false);
-      toast({ title: "Error", description: "Failed to create category", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to create category",
+        variant: "destructive"
+      });
     }
   };
 

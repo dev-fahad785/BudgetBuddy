@@ -33,6 +33,7 @@ export function MonthlyIncomeModal({ isOpen, currentMonth, onComplete }: Monthly
     } | null>(null);
     const [previousAllocated, setPreviousAllocated] = useState(0);
     const [validationError, setValidationError] = useState("");
+    const [rolloverChoice, setRolloverChoice] = useState<'yes' | 'no' | null>(null);
 
     // Format month for display
     const monthDisplay = new Date(currentMonth + "-01").toLocaleDateString('en-US', {
@@ -71,7 +72,8 @@ export function MonthlyIncomeModal({ isOpen, currentMonth, onComplete }: Monthly
             return;
         }
 
-        const totalAvailable = incomeAmount + (rolloverData?.rollover || 0);
+        const rolloverAmount = rolloverChoice === 'yes' ? (rolloverData?.rollover || 0) : 0;
+        const totalAvailable = incomeAmount + rolloverAmount;
 
         // Check if income is less than previous allocations
         if (previousAllocated > 0 && totalAvailable < previousAllocated) {
@@ -108,6 +110,7 @@ export function MonthlyIncomeModal({ isOpen, currentMonth, onComplete }: Monthly
             const newBudget = await storageService.createBudgetWithRollover({
                 monthlyIncome: income,
                 month: currentMonth,
+                includeRollover: rolloverChoice === 'yes',
             });
 
             // If same or more income, copy previous allocations
@@ -139,7 +142,8 @@ export function MonthlyIncomeModal({ isOpen, currentMonth, onComplete }: Monthly
         }
     };
 
-    const totalAvailable = (parseFloat(income) || 0) + (rolloverData?.rollover || 0);
+    const rolloverAmount = rolloverChoice === 'yes' ? (rolloverData?.rollover || 0) : 0;
+    const totalAvailable = (parseFloat(income) || 0) + rolloverAmount;
 
     return (
         <Dialog open={isOpen} onOpenChange={() => { }}>
@@ -162,10 +166,68 @@ export function MonthlyIncomeModal({ isOpen, currentMonth, onComplete }: Monthly
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* Rollover Information */}
                         {rolloverData && rolloverData.rollover > 0 && (
-                            <Alert className="bg-green-50 border-green-200">
-                                <TrendingUp className="h-4 w-4 text-green-600" />
-                                <AlertDescription className="text-green-800">
-                                    <strong>Great job!</strong> You have <strong>{currency} {rolloverData.rollover.toLocaleString()}</strong> remaining from last month that will be added to your new budget.
+                            <Alert className={rolloverChoice === null ? "bg-blue-50 border-blue-200" : rolloverChoice === 'yes' ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}>
+                                <TrendingUp className={rolloverChoice === null ? "h-4 w-4 text-blue-600" : rolloverChoice === 'yes' ? "h-4 w-4 text-green-600" : "h-4 w-4 text-gray-600"} />
+                                <AlertDescription className={rolloverChoice === null ? "text-blue-800" : rolloverChoice === 'yes' ? "text-green-800" : "text-gray-700"}>
+                                    {rolloverChoice === null ? (
+                                        <div className="space-y-3">
+                                            <p>
+                                                <strong>Great job!</strong> You have <strong>{currency} {rolloverData.rollover.toLocaleString()}</strong> remaining from last month.
+                                            </p>
+                                            <p className="text-sm">
+                                                Would you like to add this amount to your new monthly income?
+                                            </p>
+                                            <div className="flex gap-2 mt-2">
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    onClick={() => setRolloverChoice('yes')}
+                                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                                >
+                                                    Yes, Add to Income
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => setRolloverChoice('no')}
+                                                    className="border-gray-300 hover:bg-gray-100"
+                                                >
+                                                    No, Start Fresh
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : rolloverChoice === 'yes' ? (
+                                        <div>
+                                            <p>
+                                                <strong>Perfect!</strong> Your remaining <strong>{currency} {rolloverData.rollover.toLocaleString()}</strong> will be added to your new budget.
+                                            </p>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => setRolloverChoice(null)}
+                                                className="text-xs mt-2 h-6 px-2"
+                                            >
+                                                Change choice
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <p>
+                                                Starting fresh! Your previous savings of <strong>{currency} {rolloverData.rollover.toLocaleString()}</strong> will not be included.
+                                            </p>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => setRolloverChoice(null)}
+                                                className="text-xs mt-2 h-6 px-2"
+                                            >
+                                                Change choice
+                                            </Button>
+                                        </div>
+                                    )}
                                 </AlertDescription>
                             </Alert>
                         )}
@@ -209,10 +271,16 @@ export function MonthlyIncomeModal({ isOpen, currentMonth, onComplete }: Monthly
                                     <span className="text-muted-foreground">New Income:</span>
                                     <span className="font-medium">{currency} {parseFloat(income).toLocaleString()}</span>
                                 </div>
-                                {rolloverData && rolloverData.rollover > 0 && (
+                                {rolloverData && rolloverData.rollover > 0 && rolloverChoice === 'yes' && (
                                     <div className="flex justify-between text-sm">
                                         <span className="text-muted-foreground">Previous Rollover:</span>
                                         <span className="font-medium text-green-600">+ {currency} {rolloverData.rollover.toLocaleString()}</span>
+                                    </div>
+                                )}
+                                {rolloverData && rolloverData.rollover > 0 && rolloverChoice === 'no' && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">Previous Rollover:</span>
+                                        <span className="font-medium text-gray-400 line-through">{currency} {rolloverData.rollover.toLocaleString()}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between text-base font-semibold pt-2 border-t">
@@ -234,7 +302,7 @@ export function MonthlyIncomeModal({ isOpen, currentMonth, onComplete }: Monthly
                         <Button
                             type="submit"
                             className="w-full"
-                            disabled={!income || parseFloat(income) <= 0 || createBudget.isPending}
+                            disabled={!income || parseFloat(income) <= 0 || createBudget.isPending || (rolloverData && rolloverData.rollover > 0 && rolloverChoice === null)}
                         >
                             {createBudget.isPending ? "Creating Budget..." : "Continue"}
                         </Button>
