@@ -72,6 +72,13 @@ export default function BudgetSetup() {
         description: "Category created successfully!",
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create category",
+        variant: "destructive",
+      });
+    },
   });
 
   const createAllocationsMutation = useMutation({

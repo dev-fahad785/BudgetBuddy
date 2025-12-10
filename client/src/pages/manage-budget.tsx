@@ -12,7 +12,7 @@ import { storageService } from "@/lib/storage";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Category, BudgetAllocation } from "@/types";
-import { ShoppingCart, Car, FileText, Zap, Smile, ArrowLeft, Plus, Wallet, TrendingUp, ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
+import { ShoppingCart, Car, FileText, Zap, Smile, ArrowLeft, Plus, Wallet, TrendingUp, ChevronDown, ChevronUp, BarChart3, Trash2 } from "lucide-react";
 import { useSettings } from "@/hooks/use-settings";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,16 @@ import { format, subDays, startOfDay, endOfDay, startOfWeek, endOfWeek, subWeeks
 import { useExpenses } from "@/hooks/use-expenses";
 import ResetTransactionsModal from "@/components/reset-transactions-modal";
 import MonthSelector from "@/components/month-selector";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const iconMap = {
   "shopping-cart": ShoppingCart,
@@ -66,6 +76,8 @@ export default function ManageBudget() {
   const [showAddIncome, setShowAddIncome] = useState(false);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [chartPeriod, setChartPeriod] = useState<'day' | 'week' | 'month'>('day');
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const updateBudget = useUpdateBudget();
 
   const { data: expenses = [] } = useExpenses(budgetId || undefined);
@@ -110,6 +122,32 @@ export default function ManageBudget() {
     },
   });
 
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (categoryId: string) => {
+      return await storageService.deleteCategory(categoryId);
+    },
+    onSuccess: (_, deletedId) => {
+      queryClient.setQueryData(["categories"], (old: Category[] | undefined) => {
+        return old ? old.filter(c => c.id !== deletedId) : [];
+      });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.invalidateQueries({ queryKey: ["budget"] });
+      queryClient.invalidateQueries({ queryKey: ["allocations"] });
+      toast({ title: "Success", description: "Category deleted successfully!" });
+      setShowDeleteConfirm(false);
+      setCategoryToDelete(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Cannot Delete Category",
+        description: error.message,
+        variant: "destructive"
+      });
+      setShowDeleteConfirm(false);
+      setCategoryToDelete(null);
+    },
+  });
+
   useEffect(() => {
     const map: Record<string, { id?: string; allocatedAmount: string }> = {};
     categories.forEach((c) => {
@@ -128,9 +166,13 @@ export default function ManageBudget() {
     setIsCreating(true);
     try {
       await createCategoryMutation.mutateAsync({ name: newCategoryName, icon: newCategoryIcon, color: newCategoryColor });
-    } catch (err) {
+    } catch (err: any) {
       setIsCreating(false);
-      toast({ title: "Error", description: "Failed to create category", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to create category",
+        variant: "destructive"
+      });
     }
   };
 
@@ -738,21 +780,35 @@ export default function ManageBudget() {
                               </p>
                             </div>
                           </div>
-                          <div className="w-32">
-                            <Label htmlFor={`alloc-${category.id}`} className="sr-only">
-                              Allocation for {category.name}
-                            </Label>
-                            <Input
-                              id={`alloc-${category.id}`}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={localAlloc[category.id]?.allocatedAmount ?? "0"}
-                              onChange={(e) => handleChange(category.id, e.target.value)}
-                              data-testid={`input-alloc-${category.id}`}
-                              className="text-right font-medium"
-                              placeholder="0"
-                            />
+                          <div className="flex items-center space-x-2">
+                            <div className="w-32">
+                              <Label htmlFor={`alloc-${category.id}`} className="sr-only">
+                                Allocation for {category.name}
+                              </Label>
+                              <Input
+                                id={`alloc-${category.id}`}
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={localAlloc[category.id]?.allocatedAmount ?? "0"}
+                                onChange={(e) => handleChange(category.id, e.target.value)}
+                                data-testid={`input-alloc-${category.id}`}
+                                className="text-right font-medium"
+                                placeholder="0"
+                              />
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setCategoryToDelete(category);
+                                setShowDeleteConfirm(true);
+                              }}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              data-testid={`button-delete-category-${category.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         </div>
                         {allocated > 0 && (
@@ -798,6 +854,36 @@ export default function ManageBudget() {
           </div>
         </div>
       </div>
+
+      {/* Delete Category Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Category?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the category "{categoryToDelete?.name}"?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowDeleteConfirm(false);
+              setCategoryToDelete(null);
+            }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (categoryToDelete) {
+                  deleteCategoryMutation.mutate(categoryToDelete.id);
+                }
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={deleteCategoryMutation.isPending}
+            >
+              {deleteCategoryMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
