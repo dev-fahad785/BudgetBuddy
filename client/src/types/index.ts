@@ -31,6 +31,7 @@ export interface Expense {
   categoryId: string;
   budgetId: string;
   date: Date;
+  archived?: boolean; // Flag for soft-deleted expenses
   createdAt: Date | null;
 }
 

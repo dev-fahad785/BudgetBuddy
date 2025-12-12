@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { useSettings, useUpdateSettings } from "@/hooks/use-settings";
+import { useBudget } from "@/hooks/use-budget";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
 import DataManagement from "@/components/data-management";
+import { ResetBudgetModal } from "@/components/reset-budget-modal";
 import BottomNavigation from "@/components/bottom-navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 
 const CURRENCIES = [
@@ -20,10 +24,15 @@ const CURRENCIES = [
 export default function Settings() {
     const { data: settings } = useSettings();
     const updateSettings = useUpdateSettings();
+    const { data: currentBudget } = useBudget();
+    const [resetModalOpen, setResetModalOpen] = useState(false);
 
     const handleCurrencyChange = (value: string) => {
         updateSettings.mutate({ currency: value });
     };
+
+    // Get current month
+    const currentMonth = new Date().toISOString().slice(0, 7);
 
     return (
         <div className="min-h-screen bg-background pb-20">
@@ -67,10 +76,44 @@ export default function Settings() {
                     </CardContent>
                 </Card>
 
+                {/* Budget Management Card */}
+                {currentBudget && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Budget Management</CardTitle>
+                            <CardDescription>
+                                Manage your current monthly budget
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button
+                                onClick={() => setResetModalOpen(true)}
+                                variant="outline"
+                                className="w-full"
+                            >
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                                Reset Monthly Budget
+                            </Button>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Start a new budget period when your salary arrives. Current expenses will be archived for history.
+                            </p>
+                        </CardContent>
+                    </Card>
+                )}
+
                 <DataManagement />
             </div>
 
             <BottomNavigation />
+
+            {/* Reset Budget Modal */}
+            {currentBudget && (
+                <ResetBudgetModal
+                    isOpen={resetModalOpen}
+                    onClose={() => setResetModalOpen(false)}
+                    budgetId={currentBudget.id}
+                />
+            )}
         </div>
     );
 }
