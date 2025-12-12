@@ -20,6 +20,11 @@ export function useCurrentBudget() {
   });
 }
 
+// Backwards-compatible alias used by pages expecting `useBudget`
+export function useBudget() {
+  return useCurrentBudget();
+}
+
 export function useBudgetByMonth(month: string) {
   return useQuery<Budget | undefined>({
     queryKey: ["budget", month],
