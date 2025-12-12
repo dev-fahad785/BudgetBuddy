@@ -35,7 +35,7 @@ export function ResetBudgetModal({ isOpen, onClose, budgetId }: ResetBudgetModal
             try {
                 // Calculate current remaining balance
                 const allocations = await storageService.getBudgetAllocations(budgetId);
-                const expenses = await storageService.getExpenses(budgetId);
+                const expenses = await storageService.getExpenses(budgetId, false); // Exclude archived
 
                 const totalAllocated = allocations.reduce((sum, a) => sum + Number(a.allocatedAmount), 0);
                 const totalSpent = expenses.reduce((sum, e) => sum + Number(e.amount), 0);

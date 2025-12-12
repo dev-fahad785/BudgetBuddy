@@ -400,10 +400,13 @@ class StorageService {
     return db.getAll('expenses');
   }
 
-  async getExpenses(budgetId: string): Promise<Expense[]> {
+  async getExpenses(budgetId: string, includeArchived: boolean = true): Promise<Expense[]> {
     const db = await initDB();
     const allExpenses = await db.getAllFromIndex('expenses', 'by-budget', budgetId);
-    // Filter out archived expenses (soft-deleted)
+    // Only filter archived if explicitly requested
+    if (includeArchived) {
+      return allExpenses;
+    }
     return allExpenses.filter(expense => !expense.archived);
   }
 
@@ -467,7 +470,7 @@ class StorageService {
 
     // Calculate current remaining balance
     const allocations = await this.getBudgetAllocations(budgetId);
-    const expenses = await this.getExpenses(budgetId); // Only gets non-archived
+    const expenses = await this.getExpenses(budgetId, false); // Exclude archived expenses
     const totalAllocated = allocations.reduce((sum, a) => sum + Number(a.allocatedAmount), 0);
     const totalSpent = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
     const remaining = totalAllocated - totalSpent;
