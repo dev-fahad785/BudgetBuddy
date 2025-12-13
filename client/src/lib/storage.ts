@@ -626,7 +626,7 @@ class StorageService {
   async getCategoriesWithAllocations(budgetId: string): Promise<CategoryWithAllocation[]> {
     const categories = await this.getCategories();
     const allocations = await this.getBudgetAllocations(budgetId);
-    const expenses = await this.getExpenses(budgetId);
+    const expenses = await this.getExpenses(budgetId, false);
 
     return categories.map(category => {
       const allocation = allocations.find(a => a.categoryId === category.id);
@@ -656,7 +656,7 @@ class StorageService {
     }
 
     const allocations = await this.getBudgetAllocations(budgetId);
-    const expenses = await this.getExpenses(budgetId);
+    const expenses = await this.getExpenses(budgetId, false);
     const categoriesWithAllocations = await this.getCategoriesWithAllocations(budgetId);
 
     const monthlyIncome = Number(budget.monthlyIncome);
