@@ -3,12 +3,12 @@ import { queryClient } from "@/lib/queryClient";
 import { storageService } from "@/lib/storage";
 import { type Expense, type CategoryWithAllocation } from "@/types";
 
-export function useExpenses(budgetId: string | undefined) {
+export function useExpenses(budgetId: string | undefined, includeArchived: boolean = false) {
   return useQuery<Expense[]>({
-    queryKey: ["budget", budgetId, "expenses"],
+    queryKey: ["budget", budgetId, "expenses", includeArchived],
     queryFn: async () => {
       if (!budgetId) throw new Error("Budget ID is required");
-      return await storageService.getExpenses(budgetId);
+      return await storageService.getExpenses(budgetId, includeArchived);
     },
     enabled: !!budgetId,
   });

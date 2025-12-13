@@ -41,7 +41,7 @@ export default function Transactions() {
 
   // Get budget for selected month
   const { data: budget } = useBudgetByMonth(selectedMonth);
-  const { data: expenses = [], isLoading } = useExpenses(budget?.id);
+  const { data: expenses = [], isLoading } = useExpenses(budget?.id, true);
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["categories"],
