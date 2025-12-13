@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 import InstallButton from "./components/install-button";
 import Dashboard from "@/pages/dashboard";
 import BudgetSetup from "@/pages/budget-setup";
@@ -34,9 +35,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="system" storageKey="budget-buddy-theme">
         <TooltipProvider>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'flex-end', padding: 8 }}>
-            <InstallButton />
-          </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', padding: 8 }}>
+                <Badge className="uppercase text-[10px] tracking-wide bg-amber-100 text-amber-800 border-amber-200">
+                  develop
+                </Badge>
+                <InstallButton />
+              </div>
           <Toaster />
           <Router />
         </TooltipProvider>
