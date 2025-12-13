@@ -13,6 +13,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { storageService } from "@/lib/storage";
 import { type Category } from "@/types";
+import { useSettings } from "@/hooks/use-settings";
 // Currency symbol replaced inline with 'PKR'
 
 const iconOptions = [
@@ -43,6 +44,8 @@ export default function BudgetSetup() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const createBudget = useCreateBudget();
+  const { data: settings } = useSettings();
+  const currency = settings?.currency || 'PKR';
 
   const { data: categories = [], refetch: refetchCategories } = useQuery<Category[]>({
     queryKey: ["categories"],
@@ -67,6 +70,13 @@ export default function BudgetSetup() {
       toast({
         title: "Success",
         description: "Category created successfully!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create category",
+        variant: "destructive",
       });
     },
   });
@@ -195,7 +205,7 @@ export default function BudgetSetup() {
                     className="absolute left-3 inset-y-0 flex items-center text-sm text-muted-foreground pointer-events-none"
                     aria-hidden="true"
                   >
-                    PKR
+                    {currency}
                   </span>
                   <Input
                     id="monthlyIncome"
@@ -245,19 +255,19 @@ export default function BudgetSetup() {
             </div>
             <CardTitle className="text-xl">Allocate Your Budget</CardTitle>
             <p className="text-muted-foreground">
-              Distribute your PKR {parseFloat(monthlyIncome).toLocaleString()} monthly income across categories
+              Distribute your {currency} {parseFloat(monthlyIncome).toLocaleString()} monthly income across categories
             </p>
             <div className="flex justify-center items-center mt-4 space-x-4 text-sm">
               <div className="flex items-center">
                 <span className="text-muted-foreground">Allocated: </span>
                 <span className="font-medium ml-1 text-primary">
-                  PKR {totalAllocated.toLocaleString()}
+                  {currency} {totalAllocated.toLocaleString()}
                 </span>
               </div>
               <div className="flex items-center">
                 <span className="text-muted-foreground">Remaining: </span>
                 <span className={`font-medium ml-1 ${remainingBudget >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  PKR {remainingBudget.toLocaleString()}
+                  {currency} {remainingBudget.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -395,7 +405,7 @@ export default function BudgetSetup() {
                               className="absolute left-3 inset-y-0 flex items-center text-sm text-muted-foreground pointer-events-none"
                               aria-hidden="true"
                             >
-                              PKR
+                              {currency}
                             </span>
                             <Input
                               type="number"

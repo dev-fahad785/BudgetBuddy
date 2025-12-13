@@ -59,7 +59,7 @@ interface GroupedExpenses {
   };
 }
 
-export const generatePDF = async (expenses: Expense[], categories: Category[]) => {
+export const generatePDF = async (expenses: Expense[], categories: Category[], currency: string = 'PKR') => {
   const doc = new jsPDF();
   
   // Add logo
@@ -155,14 +155,14 @@ export const generatePDF = async (expenses: Expense[], categories: Category[]) =
         return [
           format(expenseDate, "MMM dd, yyyy"),
           expense.description || "-",
-          `₨${Number(expense.amount).toLocaleString()}`,
+          `${currency} ${Number(expense.amount).toLocaleString()}`,
         ];
       });
 
       // Add category total row
       tableRows.push([
         { content: "Category Total", colSpan: 2, styles: { fontStyle: 'bold', halign: 'right' } } as any,
-        { content: `₨${categoryData.total.toLocaleString()}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } } as any,
+        { content: `${currency} ${categoryData.total.toLocaleString()}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } } as any,
       ]);
 
       autoTable(doc, {
@@ -192,7 +192,7 @@ export const generatePDF = async (expenses: Expense[], categories: Category[]) =
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Month Total: ₨${monthTotal.toLocaleString()}`, 14, currentY);
+    doc.text(`Month Total: ${currency} ${monthTotal.toLocaleString()}`, 14, currentY);
     doc.setFont('helvetica', 'normal');
     currentY += 10;
   });

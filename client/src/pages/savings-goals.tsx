@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BottomNavigation from "@/components/bottom-navigation";
 import { ArrowLeft, Plus, Trash2, Target, Trophy } from "lucide-react";
 import { Link } from "wouter";
@@ -16,6 +17,7 @@ import { Link } from "wouter";
 export default function SavingsGoals() {
     const { data: goals = [] } = useSavingsGoals();
     const { data: settings } = useSettings();
+    const currency = settings?.currency || 'PKR';
     const createGoal = useCreateSavingsGoal();
     const updateGoal = useUpdateSavingsGoal();
     const deleteGoal = useDeleteSavingsGoal();
@@ -25,6 +27,12 @@ export default function SavingsGoals() {
     const [name, setName] = useState("");
     const [targetAmount, setTargetAmount] = useState("");
     const [currentAmount, setCurrentAmount] = useState("0");
+
+    // Add funds modal state
+    const [isAddFundsOpen, setIsAddFundsOpen] = useState(false);
+    const [selectedGoal, setSelectedGoal] = useState<any>(null);
+    const [fundAmount, setFundAmount] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState("");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,12 +50,23 @@ export default function SavingsGoals() {
         setCurrentAmount("0");
     };
 
+    const handleAddFundsSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (selectedGoal && fundAmount && !isNaN(Number(fundAmount)) && selectedCategory) {
+            await handleAddContribution(selectedGoal, Number(fundAmount), selectedCategory);
+            setIsAddFundsOpen(false);
+            setFundAmount("");
+            setSelectedGoal(null);
+            setSelectedCategory("");
+        }
+    };
+
     const { data: budget } = useCurrentBudget();
     const createExpense = useCreateExpense();
     const { data: categories = [] } = useCategories();
     const createCategory = useCreateCategory();
 
-    const handleAddContribution = async (goal: any, amount: number) => {
+    const handleAddContribution = async (goal: any, amount: number, categoryId?: string) => {
         // 1. Update Goal Amount
         const newAmount = Number(goal.currentAmount) + amount;
         await updateGoal.mutateAsync({
@@ -56,44 +75,21 @@ export default function SavingsGoals() {
         });
 
         // 2. Create Expense Transaction (if budget exists)
-        if (budget) {
-            // Find or create "Savings" category
-            let savingsCategory = categories.find(c => c.name === "Savings");
-
-            if (!savingsCategory) {
-                try {
-                    savingsCategory = await createCategory.mutateAsync({
-                        name: "Savings",
-                        icon: "piggy-bank",
-                        color: "#10B981", // Emerald-500
-                        isDefault: false
-                    });
-                } catch (error) {
-                    console.error("Failed to create Savings category", error);
-                    return;
+        if (budget && categoryId) {
+            // Use the selected category for the expense
+            await createExpense.mutateAsync({
+                budgetId: budget.id,
+                expenseData: {
+                    amount: amount.toString(),
+                    description: `Contribution to ${goal.name}`,
+                    categoryId: categoryId,
+                    date: new Date().toISOString()
                 }
-            }
-
-            if (savingsCategory) {
-                await createExpense.mutateAsync({
-                    budgetId: budget.id,
-                    expenseData: {
-                        amount: amount.toString(),
-                        description: `Contribution to ${goal.name}`,
-                        categoryId: savingsCategory.id,
-                        date: new Date().toISOString()
-                    }
-                });
-            }
+            });
         }
     };
 
-    const getCurrencySymbol = () => {
-        if (settings?.currency === 'USD') return '$';
-        if (settings?.currency === 'EUR') return '€';
-        if (settings?.currency === 'GBP') return '£';
-        return settings?.currency || 'PKR';
-    };
+
 
     return (
         <div className="min-h-screen bg-background pb-20">
@@ -176,7 +172,7 @@ export default function SavingsGoals() {
                                             <div>
                                                 <p className="font-medium">{goal.name}</p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {getCurrencySymbol()} {Number(goal.currentAmount).toLocaleString()} / {Number(goal.targetAmount).toLocaleString()}
+                                                    {currency} {Number(goal.currentAmount).toLocaleString()} / {Number(goal.targetAmount).toLocaleString()}
                                                 </p>
                                             </div>
                                         </div>
@@ -204,10 +200,8 @@ export default function SavingsGoals() {
                                             size="sm"
                                             className="flex-1"
                                             onClick={() => {
-                                                const amount = prompt("Enter amount to add:");
-                                                if (amount && !isNaN(Number(amount))) {
-                                                    handleAddContribution(goal, Number(amount));
-                                                }
+                                                setSelectedGoal(goal);
+                                                setIsAddFundsOpen(true);
                                             }}
                                         >
                                             <Plus className="w-3 h-3 mr-2" />
@@ -220,6 +214,48 @@ export default function SavingsGoals() {
                     })
                 )}
             </div>
+
+            {/* Add Funds Modal */}
+            <Dialog open={isAddFundsOpen} onOpenChange={setIsAddFundsOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add Funds to {selectedGoal?.name}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAddFundsSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="category">Category</Label>
+                            <Select value={selectedCategory} onValueChange={setSelectedCategory} required>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {categories.map((category) => (
+                                        <SelectItem key={category.id} value={category.id.toString()}>
+                                            {category.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="fundAmount">Amount to Add</Label>
+                            <Input
+                                id="fundAmount"
+                                type="number"
+                                value={fundAmount}
+                                onChange={(e) => setFundAmount(e.target.value)}
+                                placeholder="Enter amount"
+                                required
+                                min="0.01"
+                                step="0.01"
+                            />
+                        </div>
+                        <Button type="submit" className="w-full">
+                            Add Funds
+                        </Button>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             <BottomNavigation />
         </div>

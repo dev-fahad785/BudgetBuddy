@@ -21,6 +21,7 @@ const COLORS = ['#2ECC71', '#3498DB', '#E74C3C', '#F39C12', '#9B59B6', '#1ABC9C'
 
 import { useSettings } from "@/hooks/use-settings";
 import { queryClient } from "@/lib/queryClient";
+import { ModeToggle } from "@/components/mode-toggle";
 
 export default function Dashboard() {
   const { data: settings } = useSettings();
@@ -76,10 +77,13 @@ export default function Dashboard() {
               <h1 className="font-semibold text-lg hidden sm:block">ExpenseTracker</h1>
             </div>
 
-            <MonthSelector
-              currentMonth={selectedMonth}
-              onMonthChange={setSelectedMonth}
-            />
+            <div className="flex items-center space-x-2">
+              <MonthSelector
+                currentMonth={selectedMonth}
+                onMonthChange={setSelectedMonth}
+              />
+              <ModeToggle />
+            </div>
           </div>
         </div>
       </header>

@@ -8,6 +8,7 @@ import { useExpenses, useDeleteExpense } from "@/hooks/use-expenses";
 import { useBudgetByMonth } from "@/hooks/use-budget";
 import { type Expense, type Category } from "@/types";
 import { ArrowLeft, Filter, X, ShoppingCart, Car, FileText, Zap, Smile, Trash2, Calendar, DollarSign, TrendingUp } from "lucide-react";
+import { useSettings } from "@/hooks/use-settings";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
@@ -33,6 +34,8 @@ const iconMap = {
 export default function Transactions() {
   const [, navigate] = useLocation();
   const initialCategoryId = new URLSearchParams(window.location.search).get('categoryId');
+  const { data: settings } = useSettings();
+  const currency = settings?.currency || 'PKR';
 
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(initialCategoryId);
@@ -245,7 +248,7 @@ export default function Transactions() {
             <CardContent className="pt-4 pb-4">
               <div className="text-center">
                 <p className="text-[10px] sm:text-xs text-muted-foreground mb-1">Total Spent</p>
-                <p className="text-xl sm:text-2xl font-bold text-destructive">₨{totalAmount.toLocaleString()}</p>
+                <p className="text-xl sm:text-2xl font-bold text-destructive">{currency} {totalAmount.toLocaleString()}</p>
               </div>
             </CardContent>
           </Card>
@@ -300,7 +303,7 @@ export default function Transactions() {
                       }}
                       formatter={(value: number, name: string) => {
                         const category = categories.find(c => c.id === name);
-                        return [`₨${value.toLocaleString()}`, category?.name || name];
+                        return [`${currency} ${value.toLocaleString()}`, category?.name || name];
                       }}
                       labelFormatter={(label, payload) => {
                         if (payload && payload[0]) {
@@ -496,7 +499,7 @@ export default function Transactions() {
                       {/* Right side - Amount and Actions */}
                       <div className="flex flex-col items-end space-y-1.5 flex-shrink-0">
                         <div className="font-bold text-xs sm:text-sm text-destructive whitespace-nowrap">
-                          -₨{Number(tx.amount).toLocaleString()}
+                          -{currency} {Number(tx.amount).toLocaleString()}
                         </div>
 
                         <Button

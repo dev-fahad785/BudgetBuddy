@@ -7,6 +7,7 @@ import { useExpenses, useDeleteExpense } from "@/hooks/use-expenses";
 import { type Expense, type Category } from "@/types";
 import { useMemo } from "react";
 import ResetTransactionsModal from "./reset-transactions-modal";
+import { useSettings } from "@/hooks/use-settings";
 
 interface TransactionsModalProps {
   open: boolean;
@@ -22,6 +23,8 @@ export default function TransactionsModal({ open, onOpenChange, budgetId, catego
     queryFn: async () => await storageService.getCategories(),
     enabled: !!open,
   });
+  const { data: settings } = useSettings();
+  const currency = settings?.currency || 'PKR';
 
   const deleteMutation = useDeleteExpense();
 
@@ -102,7 +105,7 @@ export default function TransactionsModal({ open, onOpenChange, budgetId, catego
                     </div>
 
                     <div className="mt-3 sm:mt-0 sm:ml-4 flex items-center space-x-3 justify-end">
-                      <div className="font-semibold text-sm text-right">PKR {Number(tx.amount).toLocaleString()}</div>
+                      <div className="font-semibold text-sm text-right">{currency} {Number(tx.amount).toLocaleString()}</div>
                       <Button
                         variant="ghost"
                         size="sm"

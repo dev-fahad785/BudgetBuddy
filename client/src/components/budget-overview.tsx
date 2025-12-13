@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, AlertTriangle, CheckCircle, Wallet, PieChart } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useSettings } from "@/hooks/use-settings";
 
 // Mock BudgetSummary type - in real app this would be imported
 interface BudgetSummary {
@@ -19,6 +20,8 @@ interface BudgetOverviewProps {
 }
 
 export default function BudgetOverview({ summary, isLoading }: BudgetOverviewProps) {
+  const { data: settings } = useSettings();
+  const currency = settings?.currency || 'PKR';
   const [animateProgress, setAnimateProgress] = useState(false);
 
   useEffect(() => {
@@ -99,7 +102,7 @@ export default function BudgetOverview({ summary, isLoading }: BudgetOverviewPro
       </Card>
 
       {/* Stats Grid */}
-  <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
         {/* Total Spent */}
         <Card className="border-0 shadow-md hover:shadow-lg transition-shadow duration-200">
           <CardContent className="p-6">
@@ -110,7 +113,7 @@ export default function BudgetOverview({ summary, isLoading }: BudgetOverviewPro
               {spentPercentage > 80 && <AlertTriangle className="w-4 h-4 text-orange-500" />}
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="total-spent">
-              PKR {summary.totalSpent.toLocaleString()}
+              {currency} {summary.totalSpent.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground mt-1">Total Spent</p>
             <div className="mt-2 text-xs">
@@ -131,12 +134,12 @@ export default function BudgetOverview({ summary, isLoading }: BudgetOverviewPro
               {availableAmount > summary.monthlyBudget * 0.5 && <CheckCircle className="w-4 h-4 text-green-500" />}
             </div>
             <p className={`text-2xl font-bold ${availableAmount < 0 ? 'text-red-600' : 'text-gray-900 dark:text-white'}`} data-testid="available-amount">
-              PKR {availableAmount.toLocaleString()}
+              {currency} {availableAmount.toLocaleString()}
             </p>
             <p className="text-xs text-muted-foreground mt-1">Available</p>
             {summary.daysLeft > 0 && (
               <div className="mt-2 text-xs text-green-600 dark:text-green-400 font-medium">
-                PKR {dailyBudget.toLocaleString()}/day
+                {currency} {dailyBudget.toLocaleString()}/day
               </div>
             )}
           </CardContent>
@@ -154,8 +157,8 @@ export default function BudgetOverview({ summary, isLoading }: BudgetOverviewPro
               <div>
                 <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-2">Budget Alerts</h4>
                 <ul className="space-y-1 text-sm text-orange-700 dark:text-orange-300">
-                  {isOverBudget && <li>• You've exceeded your monthly budget by PKR {(summary.totalSpent - summary.monthlyBudget).toLocaleString()}</li>}
-                  {isOverAllocated && <li>• Your allocations exceed the budget by PKR {(summary.totalAllocated - summary.monthlyBudget).toLocaleString()}</li>}
+                  {isOverBudget && <li>• You've exceeded your monthly budget by {currency} {(summary.totalSpent - summary.monthlyBudget).toLocaleString()}</li>}
+                  {isOverAllocated && <li>• Your allocations exceed the budget by {currency} {(summary.totalAllocated - summary.monthlyBudget).toLocaleString()}</li>}
                   {summary.daysLeft <= 7 && <li>• Only {summary.daysLeft} days left in the current month</li>}
                 </ul>
               </div>

@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { type CategoryWithAllocation } from "@/types";
 import { ShoppingCart, Car, FileText, Zap, Smile } from "lucide-react";
+import { useSettings } from "@/hooks/use-settings";
 
 interface CategoryTileProps {
   category: CategoryWithAllocation;
@@ -18,18 +19,20 @@ const iconMap = {
 const colorMap = {
   "#2ECC71": "bg-green-100 text-green-600",
   "#3498DB": "bg-blue-100 text-blue-600",
-  "#E74C3C": "bg-red-100 text-red-600", 
+  "#E74C3C": "bg-red-100 text-red-600",
   "#F39C12": "bg-yellow-100 text-yellow-600",
   "#9B59B6": "bg-purple-100 text-purple-600",
 };
 
 export default function CategoryTile({ category, onClick }: CategoryTileProps) {
+  const { data: settings } = useSettings();
+  const currency = settings?.currency || 'PKR';
   const IconComponent = iconMap[category.icon as keyof typeof iconMap] || Smile;
   const iconClasses = colorMap[category.color as keyof typeof colorMap] || "bg-gray-100 text-gray-600";
-  
+
   const spentPercentage = category.allocated > 0 ? (category.spent / category.allocated) * 100 : 0;
   const isOverspent = category.spent > category.allocated;
-  
+
   return (
     <Card
       className={`shadow-sm border border-border ${onClick ? 'cursor-pointer hover:shadow' : ''}`}
@@ -54,43 +57,41 @@ export default function CategoryTile({ category, onClick }: CategoryTileProps) {
             </div>
           </div>
           <div className="text-right">
-            <p 
+            <p
               className={`font-semibold ${isOverspent ? 'text-destructive' : 'text-foreground'}`}
               data-testid={`category-spent-${category.id}`}
             >
-              PKR {category.spent.toLocaleString()}
+              {currency} {category.spent.toLocaleString()}
             </p>
             <p className="text-sm text-muted-foreground">
               of <span data-testid={`category-allocated-${category.id}`}>
-                PKR {category.allocated.toLocaleString()}
+                {currency} {category.allocated.toLocaleString()}
               </span>
             </p>
           </div>
         </div>
-        
+
         <div className="w-full bg-muted rounded-full h-2">
-          <div 
-            className={`h-2 rounded-full transition-all duration-300 ${
-              isOverspent ? 'bg-destructive' : 'bg-primary'
-            }`}
+          <div
+            className={`h-2 rounded-full transition-all duration-300 ${isOverspent ? 'bg-destructive' : 'bg-primary'
+              }`}
             style={{ width: `${Math.min(spentPercentage, 100)}%` }}
             data-testid={`category-progress-${category.id}`}
           ></div>
         </div>
-        
+
         <div className="flex justify-between text-sm mt-2">
           <span className="text-muted-foreground">
             {Math.round(spentPercentage)}% used
           </span>
-          <span 
-            className={`font-medium ${
-              isOverspent ? 'text-destructive' : 'text-primary'
-            }`}
+          <span
+            className={`font-medium ${isOverspent ? 'text-destructive' : 'text-primary'
+              }`}
             data-testid={`category-remaining-${category.id}`}
           >
-            {isOverspent 
-              ? `PKR ${Math.abs(category.remaining).toLocaleString()} over`
-              : `PKR ${category.remaining.toLocaleString()} left`
+            {isOverspent
+              ? `${currency} ${Math.abs(category.remaining).toLocaleString()} over`
+              : `${currency} ${category.remaining.toLocaleString()} left`
             }
           </span>
         </div>

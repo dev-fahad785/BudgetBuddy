@@ -264,14 +264,17 @@ class StorageService {
   }
 
   // Create budget with automatic rollover calculation
-  async createBudgetWithRollover(budgetData: { monthlyIncome: string; month: string }): Promise<Budget> {
+  async createBudgetWithRollover(budgetData: { monthlyIncome: string; month: string; includeRollover?: boolean }): Promise<Budget> {
     const db = await initDB();
     const { rollover } = await this.calculatePreviousMonthRemaining(budgetData.month);
+    
+    // Only include rollover if user chose to include it (default to true for backward compatibility)
+    const shouldIncludeRollover = budgetData.includeRollover !== false;
     
     const newBudget: Budget = {
       id: crypto.randomUUID(),
       monthlyIncome: budgetData.monthlyIncome,
-      previousMonthRollover: rollover > 0 ? String(rollover) : undefined,
+      previousMonthRollover: (rollover > 0 && shouldIncludeRollover) ? String(rollover) : undefined,
       month: budgetData.month,
       createdAt: new Date(),
     };
@@ -295,6 +298,17 @@ class StorageService {
 
   async createCategory(categoryData: { name: string; icon: string; color: string; isDefault?: boolean }): Promise<Category> {
     const db = await initDB();
+    
+    // Check for duplicate category name (case-insensitive)
+    const existingCategories = await db.getAll('categories');
+    const duplicate = existingCategories.find(
+      cat => cat.name.toLowerCase() === categoryData.name.toLowerCase()
+    );
+    
+    if (duplicate) {
+      throw new Error(`A category named "${duplicate.name}" already exists.`);
+    }
+    
     const newCategory: Category = {
       id: crypto.randomUUID(),
       name: categoryData.name,
@@ -309,6 +323,23 @@ class StorageService {
 
   async deleteCategory(id: string): Promise<void> {
     const db = await initDB();
+    
+    // Check if category has allocations
+    const allocations = await db.getAll('allocations');
+    const categoryAllocations = allocations.filter(a => a.categoryId === id);
+    
+    // Check if category has expenses
+    const expenses = await db.getAll('expenses');
+    const categoryExpenses = expenses.filter(e => e.categoryId === id);
+    
+    if (categoryAllocations.length > 0 || categoryExpenses.length > 0) {
+      const category = await db.get('categories', id);
+      const categoryName = category?.name || 'This category';
+      throw new Error(
+        `${categoryName} cannot be deleted because it has ${categoryAllocations.length} budget allocation(s) and ${categoryExpenses.length} transaction(s). Please remove all allocations and transactions first.`
+      );
+    }
+    
     await db.delete('categories', id);
   }
 
@@ -369,9 +400,14 @@ class StorageService {
     return db.getAll('expenses');
   }
 
-  async getExpenses(budgetId: string): Promise<Expense[]> {
+  async getExpenses(budgetId: string, includeArchived: boolean = true): Promise<Expense[]> {
     const db = await initDB();
-    return db.getAllFromIndex('expenses', 'by-budget', budgetId);
+    const allExpenses = await db.getAllFromIndex('expenses', 'by-budget', budgetId);
+    // Only filter archived if explicitly requested
+    if (includeArchived) {
+      return allExpenses;
+    }
+    return allExpenses.filter(expense => !expense.archived);
   }
 
   async createExpense(expenseData: { amount: string; description: string; categoryId: string; budgetId: string; date: string }): Promise<Expense> {
@@ -402,6 +438,56 @@ class StorageService {
       await tx.store.delete(e.id);
     }
     await tx.done;
+  }
+
+  // Archive current month expenses (soft delete)
+  async archiveCurrentMonthExpenses(budgetId: string): Promise<number> {
+    const db = await initDB();
+    const expenses = await db.getAllFromIndex('expenses', 'by-budget', budgetId);
+    const activeExpenses = expenses.filter(e => !e.archived);
+    
+    const tx = db.transaction('expenses', 'readwrite');
+    for (const expense of activeExpenses) {
+      await tx.store.put({ ...expense, archived: true });
+    }
+    await tx.done;
+    
+    return activeExpenses.length;
+  }
+
+  // Reset monthly budget with optional rollover
+  async resetMonthlyBudget(params: {
+    budgetId: string;
+    newIncome: string;
+    includeRollover: boolean;
+  }): Promise<Budget> {
+    const { budgetId, newIncome, includeRollover } = params;
+    const db = await initDB();
+    
+    // Get current budget
+    const currentBudget = await db.get('budgets', budgetId);
+    if (!currentBudget) throw new Error("Budget not found");
+
+    // Calculate current remaining balance
+    const allocations = await this.getBudgetAllocations(budgetId);
+    const expenses = await this.getExpenses(budgetId, false); // Exclude archived expenses
+    const totalAllocated = allocations.reduce((sum, a) => sum + Number(a.allocatedAmount), 0);
+    const totalSpent = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const remaining = totalAllocated - totalSpent;
+    const rollover = Math.max(0, remaining);
+
+    // Archive current expenses
+    await this.archiveCurrentMonthExpenses(budgetId);
+
+    // Update budget with new income and optional rollover
+    const updatedBudget: Budget = {
+      ...currentBudget,
+      monthlyIncome: newIncome,
+      previousMonthRollover: (rollover > 0 && includeRollover) ? String(rollover) : undefined,
+    };
+
+    await db.put('budgets', updatedBudget);
+    return updatedBudget;
   }
 
   // Income operations

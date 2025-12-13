@@ -11,6 +11,7 @@ import { useCategoriesWithAllocations } from "@/hooks/use-expenses";
 import { useToast } from "@/hooks/use-toast";
 import { storageService } from "@/lib/storage";
 import { type Category } from "@/types";
+import { useSettings } from "@/hooks/use-settings";
 
 interface AddExpenseModalProps {
   open: boolean;
@@ -23,6 +24,8 @@ export default function AddExpenseModal({ open, onOpenChange, budgetId }: AddExp
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const { data: settings } = useSettings();
+  const currency = settings?.currency || 'PKR';
 
   const { toast } = useToast();
   const createExpense = useCreateExpense();
@@ -87,7 +90,7 @@ export default function AddExpenseModal({ open, onOpenChange, budgetId }: AddExp
           <div>
             <Label htmlFor="amount">Amount *</Label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">{"PKR\u00A0"}</span>
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">{`${currency}\u00A0`}</span>
               <Input
                 id="amount"
                 type="number"

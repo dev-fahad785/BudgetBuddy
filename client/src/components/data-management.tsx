@@ -5,10 +5,13 @@ import { storageService } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
 import { Download, Upload, Loader2, FileText, FileSpreadsheet } from "lucide-react";
 import { generateCSV, downloadCSV, generatePDF } from "@/lib/export-utils";
+import { useSettings } from "@/hooks/use-settings";
 
 export default function DataManagement() {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
+    const { data: settings } = useSettings();
+    const currency = settings?.currency || 'PKR';
 
     const handleExport = async () => {
         try {
@@ -66,7 +69,7 @@ export default function DataManagement() {
             setLoading(true);
             const expenses = await storageService.getAllExpenses();
             const categories = await storageService.getCategories();
-            generatePDF(expenses, categories);
+            generatePDF(expenses, categories, currency);
             toast({
                 title: "Export Successful",
                 description: "Expenses exported to PDF.",

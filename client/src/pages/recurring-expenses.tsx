@@ -16,6 +16,7 @@ export default function RecurringExpenses() {
     const { data: recurringExpenses = [] } = useRecurringExpenses();
     const { data: categories = [] } = useCategories();
     const { data: settings } = useSettings();
+    const currency = settings?.currency || 'PKR';
     const createRecurring = useCreateRecurringExpense();
     const deleteRecurring = useDeleteRecurringExpense();
     const [isOpen, setIsOpen] = useState(false);
@@ -42,12 +43,7 @@ export default function RecurringExpenses() {
         setCategoryId("");
     };
 
-    const getCurrencySymbol = () => {
-        if (settings?.currency === 'USD') return '$';
-        if (settings?.currency === 'EUR') return '€';
-        if (settings?.currency === 'GBP') return '£';
-        return settings?.currency || 'PKR';
-    };
+
 
     return (
         <div className="min-h-screen bg-background pb-20">
@@ -146,7 +142,7 @@ export default function RecurringExpenses() {
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <span className="font-semibold">
-                                        {getCurrencySymbol()} {Number(expense.amount).toLocaleString()}
+                                        {currency} {Number(expense.amount).toLocaleString()}
                                     </span>
                                     <Button
                                         variant="ghost"
